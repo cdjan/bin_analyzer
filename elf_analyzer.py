@@ -2,6 +2,8 @@ import argparse
 from parser.elf_header import parse_elf_header
 from parser.program_header import analyze_program_headers
 from parser.section_header import analyze_section_headers
+from parser.symbols import analyze_symbols
+
 
 def main():
     parser = argparse.ArgumentParser(description="ELF Analyzer CLI Tool")
@@ -20,6 +22,9 @@ def main():
 
     if args.sections:
         analyze_section_headers(args.file)
+    
+    if args.symbols:
+        analyze_symbols(args.file)
 
     # If no specific flags given, do everything
     if not (args.header or args.segments or args.sections):
@@ -27,6 +32,7 @@ def main():
         parse_elf_header(args.file)
         analyze_program_headers(args.file)
         analyze_section_headers(args.file)
+        analyze_symbols(args.file)
 
 if __name__ == "__main__":
     main()
