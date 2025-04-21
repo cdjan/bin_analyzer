@@ -12,13 +12,10 @@ from pe_analyzer.pe_header   import parse_pe_header
 from pe_analyzer.pe_sections import analyze_pe_sections
 from pe_analyzer.pe_imports  import analyze_pe_imports
 
+# CIRCL HashLookup integration
+from hashing.checkCircl   import check_file_with_circl
 
 def detect_file_type(path):
-    """
-    Read the first few bytes to distinguish ELF vs PE.
-    ELF files start with 0x7F 'E' 'L' 'F'
-    PE files (DOS header) start with 'M' 'Z'
-    """
     try:
         with open(path, 'rb') as f:
             magic = f.read(4)
@@ -33,59 +30,75 @@ def detect_file_type(path):
     return None
 
 
+def wait_for_next():
+    while True:
+        choice = input("\nPress 'n' for next, 'q' to quit: ").strip().lower()
+        if choice == 'n':
+            return True
+        elif choice == 'q':
+            return False
+        print("Invalid input: please press 'n' or 'q'.")
+
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Unified ELF & PE Analyzer CLI"
-    )
+    parser = argparse.ArgumentParser(description="Unified ELF & PE Analyzer CLI")
     parser.add_argument("file", help="Path to ELF or PE file")
-
-    # ELF flags
-    parser.add_argument("--elf-header",   action="store_true", help="Parse ELF header")
-    parser.add_argument("--elf-segments", action="store_true", help="Analyze ELF program headers")
-    parser.add_argument("--elf-sections", action="store_true", help="Analyze ELF section headers")
-    parser.add_argument("--elf-symbols",  action="store_true", help="Analyze ELF symbol tables")
-
-    # PE flags
-    parser.add_argument("--pe-header",   action="store_true", help="Parse PE header (DOS+NT)")
-    parser.add_argument("--pe-sections", action="store_true", help="Analyze PE sections")
-    parser.add_argument("--pe-imports",  action="store_true", help="Analyze PE import table")
-
+    parser.add_argument("--headers", action="store_true",
+                        help="Parse file header (ELF vs PE)")
+    parser.add_argument("--sections", action="store_true",
+                        help="Analyze sections/segments")
+    parser.add_argument("--imports", action="store_true",
+                        help="Analyze imports/symbols or export table")
+    parser.add_argument("--circl", action="store_true",
+                        help="Check file hash against CIRCL HashLookup public API")
     args = parser.parse_args()
+
     ftype = detect_file_type(args.file)
     if not ftype:
-        print("[!] Unknown file format. Not ELF or PE.")
+        print("[!] Unknown format: not ELF or PE.")
         sys.exit(1)
 
-    # Helper to check if *any* module-flag was passed
-    any_flag = any([
-        args.elf_header, args.elf_segments, args.elf_sections, args.elf_symbols,
-        args.pe_header,  args.pe_sections,  args.pe_imports
-    ])
+    any_flag = args.headers or args.sections or args.imports or args.circl
 
-    # ---- ELF path ----
-    if ftype == 'ELF':
-        if args.elf_header or not any_flag:
+    # ----- HEADER ANALYSIS -----
+    if args.headers or not any_flag:
+        print("\n== Header Analysis ==")
+        if ftype == 'ELF':
             try:
                 parse_elf_header(args.file)
             except ELFError:
                 print(f"[!] Error: '{args.file}' is not a valid ELF file.")
                 return
-        if args.elf_segments or not any_flag:
-            analyze_program_headers(args.file)
-        if args.elf_sections or not any_flag:
-            analyze_section_headers(args.file)
-        if args.elf_symbols or not any_flag:
-            analyze_symbols(args.file)
-
-    # ---- PE path ----
-    elif ftype == 'PE':
-        if args.pe_header or not any_flag:
+        else:
             parse_pe_header(args.file)
-        if args.pe_sections or not any_flag:
-            analyze_pe_sections(args.file)
-        if args.pe_imports or not any_flag:
-            analyze_pe_imports(args.file)
+        if not any_flag and not wait_for_next():
+            return
 
+    # ----- SECTION/SEGMENT ANALYSIS -----
+    if args.sections or not any_flag:
+        print("\n== Section Analysis ==")
+        if ftype == 'ELF':
+            analyze_program_headers(args.file)
+            analyze_section_headers(args.file)
+        else:
+            analyze_pe_sections(args.file)
+        if not any_flag and not wait_for_next():
+            return
+
+    # ----- IMPORT/SYMBOL ANALYSIS -----
+    if args.imports or not any_flag:
+        print("\n== Import/Symbol Analysis ==")
+        if ftype == 'ELF':
+            analyze_symbols(args.file)
+        else:
+            analyze_pe_imports(args.file)
+        if not any_flag and not wait_for_next():
+            return
+
+    # ----- CIRCL HASHLOOKUP -----
+    if args.circl:
+        print("\n== CIRCL HashLookup ==")
+        check_file_with_circl(args.file)
 
 if __name__ == "__main__":
     main()
