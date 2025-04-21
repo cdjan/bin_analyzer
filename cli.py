@@ -3,14 +3,14 @@ import argparse
 import sys
 
 from elftools.common.exceptions import ELFError
-from parser.elf_header       import parse_elf_header
-from parser.program_header   import analyze_program_headers
-from parser.section_header   import analyze_section_headers
-from parser.symbols          import analyze_symbols
+from elf_parse.elf_header       import parse_elf_header
+from elf_parse.program_header   import analyze_program_headers
+from elf_parse.section_header   import analyze_section_headers
+from elf_parse.symbols          import analyze_symbols
 
-from pe_analyzer.pe_header   import parse_pe_header
-from pe_analyzer.pe_sections import analyze_pe_sections
-from pe_analyzer.pe_imports  import analyze_pe_imports
+from pe_parse.pe_header   import parse_pe_header
+from pe_parse.pe_sections import analyze_pe_sections
+from pe_parse.pe_imports  import analyze_pe_imports
 
 # CIRCL HashLookup integration
 from hashing.checkCircl   import check_file_with_circl
